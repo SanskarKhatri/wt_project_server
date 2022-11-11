@@ -23,6 +23,18 @@ recordRoutes.route("/record").get(function (req, res) {
      res.json(result);
    });
 });
+recordRoutes.route("/record/:id").get(function (req, res) {
+  let db_connect = dbo.getDb();
+  let myquery = { _id: ObjectId(req.params.id) };
+  db_connect
+    .collection("Lists")
+    .find(myquery)
+    .toArray(function (err, result) {
+      if (err) throw err;
+      console.log(result);
+      res.json(result);
+    });
+ });
  
 // This section will help you create a new List.
 recordRoutes.route("/record/addList").post(function (req, response) {
