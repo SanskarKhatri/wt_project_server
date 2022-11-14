@@ -1,4 +1,5 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
  
 // recordRoutes is an instance of the express router.
 // We use it to define our routes.
@@ -11,7 +12,28 @@ const dbo = require("../db/conn");
 // This help convert the id from string to ObjectId for the _id.
 const ObjectId = require("mongodb").ObjectId;
  
- 
+
+recordRoutes.route("/auth").post(function (req,res){
+
+})
+
+ //REGISTRATION
+recordRoutes.route("/register").post(async function(req,response){
+  let db_connect = dbo.getDb();
+  const salt = await bcrypt.genSalt(10);
+  const hashedPass = await bcrypt.hash(req.body.password, salt);
+  let user = {
+    username: req.body.username,
+    email: req.body.email,
+    password: hashedPass
+  };
+  db_connect.collection("Users").insertOne(user, function (err, res) {
+    if (err) throw err;
+    response.json(res);
+  });
+})
+
+
 // This section will help you get a array of all the Lists int workspace.
 recordRoutes.route("/record").get(function (req, res) {
  let db_connect = dbo.getDb();
@@ -31,7 +53,6 @@ recordRoutes.route("/record/:id").get(function (req, res) {
     .find(myquery)
     .toArray(function (err, result) {
       if (err) throw err;
-      console.log(result);
       res.json(result);
     });
  });
@@ -48,6 +69,20 @@ recordRoutes.route("/record/addList").post(function (req, response) {
  });
 });
 
+recordRoutes.route("/record/addCard").post(function (req, response) {
+  let db_connect = dbo.getDb();
+  let currentCards = req.body.currentCards;
+  let myobj = {
+    key: req.body.key,
+    content : req.body.content
+  };
+  let myquery = { _id: ObjectId(req.body.id) };
+  db_connect.collection("Lists").updateOne(myquery, {$set: {cards: [...currentCards, myobj]}}, function (err, res) {
+    if (err) throw err;
+    response.json(res);
+  });
+ });
+
 recordRoutes.route("/:id").delete((req, response) => {
   let db_connect = dbo.getDb();
   let myquery = { _id: ObjectId(req.params.id) };
@@ -58,4 +93,23 @@ recordRoutes.route("/:id").delete((req, response) => {
   });
  });
  
+ recordRoutes.route("/record/deleteCard/:id/:key").delete((req, response) => {
+  let db_connect = dbo.getDb();
+  let myquery = { _id: ObjectId(req.params.id) };
+  let key = req.params.key;
+  db_connect
+    .collection("Lists")
+    .find(myquery)
+    .toArray(function (err, result) {
+      if (err) throw err;
+      const cards = result[0].cards;
+      const newCards = cards.filter((card) => (card.key !== key));
+      db_connect.collection("Lists").updateOne(myquery, {$set: {cards: newCards}}, function (err, res) {
+        if (err) throw err;
+        console.log("1 card deleted.");
+        response.json(res);
+      });
+    });
+ });
+
 module.exports = recordRoutes;
